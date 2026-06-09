@@ -80,28 +80,52 @@ export default function HomePage() {
   const [activeSignal, setActiveSignal] = useState(0)
   const [visibleCount, setVisibleCount] = useState(0)
   const [showTyping, setShowTyping] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Array so ALL pending timeouts are cleared on unmount / loop reset
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // Animated chat preview — loops through demo messages
   useEffect(() => {
-    const schedule = (fn: () => void, ms: number) => {
-      timerRef.current = setTimeout(fn, ms)
+    function clearAll() {
+      timersRef.current.forEach(clearTimeout)
+      timersRef.current = []
+    }
+
+    function after(fn: () => void, ms: number) {
+      timersRef.current.push(setTimeout(fn, ms))
     }
 
     function runSequence() {
+      clearAll()
       setVisibleCount(0)
       setShowTyping(false)
 
-      schedule(() => setVisibleCount(1), 600)
-      schedule(() => setShowTyping(true), 1800)
-      schedule(() => { setShowTyping(false); setVisibleCount(2) }, 3000)
-      schedule(() => setShowTyping(true), 4200)
-      schedule(() => { setShowTyping(false); setVisibleCount(3) }, 6000)
-      schedule(runSequence, 10000)
+      after(() => setVisibleCount(1), 600)
+      after(() => setShowTyping(true), 1800)
+      after(() => { setShowTyping(false); setVisibleCount(2) }, 3000)
+      after(() => setShowTyping(true), 4200)
+      after(() => { setShowTyping(false); setVisibleCount(3) }, 6000)
+      after(runSequence, 10500)
     }
 
     runSequence()
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+    return clearAll
+  }, [])
+
+  // Scroll-triggered reveal for feature cards
+  useEffect(() => {
+    const cards = document.querySelectorAll('.animate-on-scroll')
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target as HTMLElement
+          const delay = el.dataset.delay ?? '0'
+          setTimeout(() => el.classList.add('animate-visible'), parseInt(delay))
+          obs.unobserve(el)
+        }
+      })
+    }, { threshold: 0.12 })
+    cards.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
   }, [])
 
   return (
@@ -205,8 +229,9 @@ export default function HomePage() {
             {FEATURES.map((f, i) => (
               <div
                 key={i}
-                className="card-hover stagger-enter p-8 rounded-2xl border border-sage-100"
-                style={{ background: 'var(--bg-main)', animationDelay: `${i * 0.1}s` }}
+                className="card-hover animate-on-scroll p-8 rounded-2xl border border-sage-100"
+                data-delay={String(i * 100)}
+                style={{ background: 'var(--bg-main)' }}
               >
                 <div className="text-3xl mb-4">{f.icon}</div>
                 <h3 className="font-display text-xl font-medium mb-2" style={{ color: 'var(--text-dark)' }}>{f.title}</h3>
@@ -220,7 +245,7 @@ export default function HomePage() {
       {/* Signals */}
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-16">
-          <div className="flex-1">
+          <div className="flex-1 animate-on-scroll" data-delay="0">
             <h2 className="font-display text-5xl font-light mb-4" style={{ color: 'var(--text-dark)' }}>Wohlbefindenssignale,<br />diskret überwacht</h2>
             <p className="text-base leading-relaxed mb-8" style={{ color: '#6b8a70' }}>
               Clara hört auf das, was wirklich zählt. Jedes Gespräch wird auf Muster analysiert, die Pflegepersonen kennen sollten – klar dargestellt, nie versteckt.
@@ -239,7 +264,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex-1 glass rounded-3xl p-8 shadow-lg">
+          <div className="flex-1 glass rounded-3xl p-8 shadow-lg animate-on-scroll" data-delay="150">
             <div className="text-4xl mb-3">
               {['😔', '😴', '🤕', '💊', '🤔', '😰', '🏠'][activeSignal]}
             </div>
