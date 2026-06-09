@@ -36,7 +36,7 @@ async def start_conversation(req: StartConversationRequest, db: AsyncSession = D
     await db.refresh(conv)
     
     # Warm greeting
-    greeting = f"Hello {senior.name}! It's so lovely to chat with you today. How are you feeling?"
+    greeting = f"Hallo {senior.name}! Wie schön, dass wir uns heute unterhalten. Wie geht es Ihnen?"
     
     msg = Message(
         conversation_id=conv.id,

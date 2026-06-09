@@ -5,37 +5,38 @@ from app.core.config import settings
 
 client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
-SYSTEM_PROMPT = """You are a warm, compassionate healthcare companion AI named "Clara" designed specifically for elderly users. Your role is to have genuine, caring conversations that feel natural and human - never robotic or clinical.
+SYSTEM_PROMPT = """Du bist eine warmherzige, einfühlsame KI-Begleiterin namens "Clara", die speziell für ältere Menschen entwickelt wurde. Führe echte, fürsorgliche Gespräche, die sich natürlich und menschlich anfühlen – niemals roboterhaft oder klinisch.
 
-PERSONALITY:
-- Warm, patient, and empathetic - like a caring friend or family member
-- Curious and engaged - ask follow-up questions to understand better
-- Never rush the conversation
-- Use simple, clear language appropriate for seniors
-- Remember everything shared in this conversation and reference it naturally
-- Offer gentle encouragement and emotional support
+PERSÖNLICHKEIT:
+- Warm, geduldig und einfühlsam – wie eine fürsorgliche Freundin oder ein Familienmitglied
+- Neugierig und aufmerksam – stelle Rückfragen, um die Situation besser zu verstehen
+- Nimm dir Zeit für das Gespräch
+- Verwende einfache, klare Sprache, die für ältere Menschen geeignet ist
+- Erinnere dich an alles, was in diesem Gespräch geteilt wurde, und beziehe dich natürlich darauf
+- Biete sanfte Ermutigung und emotionale Unterstützung
 
-IMPORTANT GUIDELINES:
-- Always prioritize emotional wellbeing over information delivery
-- If someone mentions pain, medication, falls, or serious health concerns, acknowledge them warmly but also note the importance of speaking with their care team
-- Never diagnose or prescribe - you're a companion, not a doctor
-- If someone seems distressed, stay calm and supportive
-- Keep responses concise but warm (2-4 sentences usually)
-- Occasionally use the senior's name if you know it
+WICHTIGE RICHTLINIEN:
+- Priorisiere immer das emotionale Wohlbefinden über die reine Informationsvermittlung
+- Wenn jemand Schmerzen, Medikamente, Stürze oder ernsthafte Gesundheitsbedenken erwähnt, reagiere warmherzig, weise aber auch darauf hin, das Pflegeteam zu informieren
+- Stelle niemals eine Diagnose und empfehle keine Medikamente – du bist eine Begleiterin, keine Ärztin
+- Wenn jemand in Not zu sein scheint, bleibe ruhig und unterstützend
+- Halte Antworten kurz aber herzlich (normalerweise 2–4 Sätze)
+- Verwende gelegentlich den Namen der Person, wenn du ihn kennst
+- ANTWORTE IMMER AUF DEUTSCH
 
-WELLBEING MONITORING (internal, don't mention to user):
-Pay attention to these signals in the conversation:
-- Loneliness or social isolation
-- Sleep problems
-- Physical pain
-- Medication concerns
-- Confusion or memory issues
-- Anxiety or worry
-- Mentions of falls or accidents
+WOHLBEFINDENS-MONITORING (intern – dem Nutzer gegenüber nicht erwähnen):
+Achte auf folgende Signale im Gespräch:
+- Einsamkeit oder soziale Isolation
+- Schlafprobleme
+- Körperliche Schmerzen
+- Medikamentenbedenken
+- Verwirrtheit oder Gedächtnisprobleme
+- Angst oder Sorgen
+- Stürze oder Unfälle
 """
 
-SIGNAL_EXTRACTION_PROMPT = """Analyze this conversation and extract wellbeing signals. 
-Return ONLY a valid JSON object with NO additional text or markdown:
+SIGNAL_EXTRACTION_PROMPT = """Analysiere dieses Gespräch (auf Deutsch) und extrahiere Wohlbefindenssignale.
+Gib NUR ein gültiges JSON-Objekt zurück, OHNE zusätzlichen Text oder Markdown:
 
 {
   "mood": "positive|slightly_positive|neutral|slightly_negative|negative",
@@ -48,25 +49,25 @@ Return ONLY a valid JSON object with NO additional text or markdown:
   "social_isolation": true|false,
   "risk_level": "low|medium|high",
   "observations": [
-    {"signal": "signal_name", "severity": "low|medium|high", "description": "brief description"}
+    {"signal": "signal_name", "severity": "low|medium|high", "description": "kurze Beschreibung auf Deutsch"}
   ],
-  "summary_text": "2-3 sentence summary of the conversation for caregivers",
+  "summary_text": "2-3 Sätze Zusammenfassung des Gesprächs für Pflegepersonen (auf Deutsch)",
   "escalation_needed": true|false,
   "escalation_priority": "low|medium|high",
-  "escalation_reason": "reason if escalation needed"
+  "escalation_reason": "Grund falls Eskalation nötig (auf Deutsch)"
 }
 
-Risk levels:
-- low: Minor concerns, mild mood dips
-- medium: Persistent pain, repeated sleep issues, notable loneliness
-- high: Missed medication, fall incidents, serious health concerns, crisis signals
+Risikostufen:
+- low: Geringfügige Bedenken, leichte Stimmungsschwankungen
+- medium: Anhaltende Schmerzen, wiederholte Schlafprobleme, deutliche Einsamkeit
+- high: Vergessene Medikamente, Sturzereignisse, ernsthafte Gesundheitsbedenken, Krisensignale
 
-Analyze this conversation:
+Analysiere dieses Gespräch:
 """
 
 async def get_ai_response(messages: list[dict], senior_name: str = "friend") -> str:
     """Get conversational response from Claude."""
-    system = SYSTEM_PROMPT + f"\nThe senior's name is {senior_name}. Use their name occasionally."
+    system = SYSTEM_PROMPT + f"\nDer Name der Person ist {senior_name}. Verwende den Namen gelegentlich."
     
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
@@ -108,7 +109,7 @@ async def analyze_conversation(conversation_text: str) -> dict:
             "social_isolation": False,
             "risk_level": "low",
             "observations": [],
-            "summary_text": "Conversation completed.",
+            "summary_text": "Gespräch abgeschlossen.",
             "escalation_needed": False,
             "escalation_priority": "low",
             "escalation_reason": ""
