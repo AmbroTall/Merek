@@ -54,10 +54,10 @@ type Observation = {
 type EscalationDetail = Escalation & { acknowledged: boolean }
 
 const RISK_CONFIG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
-  low: { label: 'Low Risk', bg: '#dcf4e4', color: '#1a6b3c', dot: '#22c55e' },
-  medium: { label: 'Medium Risk', bg: '#fef3cd', color: '#7d5a00', dot: '#f59e0b' },
-  high: { label: 'High Risk', bg: '#ffe0d9', color: '#9c2d12', dot: '#ef4444' },
-  unknown: { label: 'No Data', bg: '#f1ede6', color: '#8aaa92', dot: '#aaa' },
+  low:     { label: 'Niedriges Risiko', bg: '#dcf4e4', color: '#1a6b3c', dot: '#22c55e' },
+  medium:  { label: 'Mittleres Risiko', bg: '#fef3cd', color: '#7d5a00', dot: '#f59e0b' },
+  high:    { label: 'Hohes Risiko',     bg: '#ffe0d9', color: '#9c2d12', dot: '#ef4444' },
+  unknown: { label: 'Keine Daten',      bg: '#f1ede6', color: '#8aaa92', dot: '#aaa' },
 }
 
 const SIGNAL_ICONS: Record<string, string> = {
@@ -65,13 +65,47 @@ const SIGNAL_ICONS: Record<string, string> = {
   confusion: '🤔', anxiety: '😰', social_isolation: '🏠', fall: '⚠️',
 }
 
+const SIGNAL_LABELS: Record<string, string> = {
+  loneliness: 'Einsamkeit',
+  poor_sleep: 'Schlafprobleme',
+  pain: 'Schmerzen',
+  medication_issue: 'Medikamentenproblem',
+  confusion: 'Verwirrtheit',
+  anxiety: 'Angst',
+  social_isolation: 'Soziale Isolation',
+  fall: 'Sturz',
+}
+
+const MOOD_LABELS: Record<string, string> = {
+  positive: 'Positiv',
+  slightly_positive: 'Leicht positiv',
+  neutral: 'Neutral',
+  slightly_negative: 'Leicht negativ',
+  negative: 'Negativ',
+}
+
+const SEVERITY_LABELS: Record<string, string> = {
+  low: 'Niedrig',
+  medium: 'Mittel',
+  high: 'Hoch',
+}
+
+const SUMMARY_FLAGS: { key: string; label: string }[] = [
+  { key: 'sleep_issue',      label: 'Schlafproblem' },
+  { key: 'loneliness',       label: 'Einsamkeit' },
+  { key: 'pain',             label: 'Schmerzen' },
+  { key: 'medication_issue', label: 'Medikamentenproblem' },
+  { key: 'anxiety',          label: 'Angst' },
+]
+
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 60) return `vor ${mins} Min.`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
+  if (hrs < 24) return `vor ${hrs} Std.`
+  const days = Math.floor(hrs / 24)
+  return `vor ${days} Tag${days > 1 ? 'en' : ''}`
 }
 
 export default function DashboardPage() {
@@ -93,10 +127,33 @@ export default function DashboardPage() {
       const data = await res.json()
       setSeniors(data)
     } catch {
-      // Show demo data if backend not available
       setSeniors([
-        { id: '11111111-1111-1111-1111-111111111111', name: 'Margaret Wilson', email: 'margaret@example.com', latest_interaction: new Date().toISOString(), risk_level: 'medium', mood: 'slightly_negative', pending_escalations: 1, escalations: [{ id: '1', priority: 'medium', reason: 'Reported poor sleep and loneliness', action_required: 'Caregiver review recommended within 24 hours', created_at: new Date().toISOString() }] },
-        { id: '22222222-2222-2222-2222-222222222222', name: 'Robert Thompson', email: 'robert@example.com', latest_interaction: new Date(Date.now() - 86400000 * 2).toISOString(), risk_level: 'low', mood: 'neutral', pending_escalations: 0, escalations: [] },
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: 'Margaret Wilson',
+          email: 'margaret@example.com',
+          latest_interaction: new Date().toISOString(),
+          risk_level: 'medium',
+          mood: 'slightly_negative',
+          pending_escalations: 1,
+          escalations: [{
+            id: '1',
+            priority: 'medium',
+            reason: 'Schlafprobleme und Einsamkeit berichtet',
+            action_required: 'Überprüfung durch Pflegeperson innerhalb von 24 Stunden empfohlen',
+            created_at: new Date().toISOString(),
+          }],
+        },
+        {
+          id: '22222222-2222-2222-2222-222222222222',
+          name: 'Robert Thompson',
+          email: 'robert@example.com',
+          latest_interaction: new Date(Date.now() - 86400000 * 2).toISOString(),
+          risk_level: 'low',
+          mood: 'neutral',
+          pending_escalations: 0,
+          escalations: [],
+        },
       ])
     }
     setLoading(false)
@@ -130,7 +187,7 @@ export default function DashboardPage() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-main)' }}>
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-2 border-sage-200 border-t-sage-500 animate-spin mx-auto mb-4"></div>
-          <p className="text-sm" style={{ color: '#8aaa92' }}>Loading dashboard…</p>
+          <p className="text-sm" style={{ color: '#8aaa92' }}>Dashboard wird geladen…</p>
         </div>
       </div>
     )
@@ -148,11 +205,11 @@ export default function DashboardPage() {
           {pendingAlerts > 0 && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: '#ffe0d9', color: '#9c2d12' }}>
               <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse inline-block"></span>
-              {pendingAlerts} alert{pendingAlerts > 1 ? 's' : ''} pending
+              {pendingAlerts} {pendingAlerts > 1 ? 'Warnungen ausstehend' : 'Warnung ausstehend'}
             </div>
           )}
           <Link href="/chat" className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--sage-green)' }}>
-            + New Conversation
+            + Neues Gespräch
           </Link>
         </div>
       </nav>
@@ -164,21 +221,21 @@ export default function DashboardPage() {
           <div className="p-5 border-b border-sage-100 grid grid-cols-3 gap-3">
             <div className="text-center p-3 rounded-xl" style={{ background: 'var(--bg-main)' }}>
               <div className="font-display text-2xl font-medium" style={{ color: 'var(--text-dark)' }}>{seniors.length}</div>
-              <div className="text-xs mt-0.5" style={{ color: '#8aaa92' }}>Seniors</div>
+              <div className="text-xs mt-0.5" style={{ color: '#8aaa92' }}>Senioren</div>
             </div>
             <div className="text-center p-3 rounded-xl" style={{ background: highRiskCount > 0 ? '#ffe0d9' : 'var(--bg-main)' }}>
               <div className="font-display text-2xl font-medium" style={{ color: highRiskCount > 0 ? '#9c2d12' : 'var(--text-dark)' }}>{highRiskCount}</div>
-              <div className="text-xs mt-0.5" style={{ color: highRiskCount > 0 ? '#c0402a' : '#8aaa92' }}>High Risk</div>
+              <div className="text-xs mt-0.5" style={{ color: highRiskCount > 0 ? '#c0402a' : '#8aaa92' }}>Hohes Risiko</div>
             </div>
             <div className="text-center p-3 rounded-xl" style={{ background: pendingAlerts > 0 ? '#fef3cd' : 'var(--bg-main)' }}>
               <div className="font-display text-2xl font-medium" style={{ color: pendingAlerts > 0 ? '#7d5a00' : 'var(--text-dark)' }}>{pendingAlerts}</div>
-              <div className="text-xs mt-0.5" style={{ color: pendingAlerts > 0 ? '#9a7000' : '#8aaa92' }}>Alerts</div>
+              <div className="text-xs mt-0.5" style={{ color: pendingAlerts > 0 ? '#9a7000' : '#8aaa92' }}>Warnungen</div>
             </div>
           </div>
 
           {/* Senior list */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider px-2 py-2" style={{ color: '#aabdab' }}>Your Seniors</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider px-2 py-2" style={{ color: '#aabdab' }}>Ihre Senioren</h3>
             {seniors.map(s => {
               const rc = RISK_CONFIG[s.risk_level] || RISK_CONFIG.unknown
               const isActive = selected?.senior.id === s.id
@@ -226,8 +283,8 @@ export default function DashboardPage() {
           {!selected && !detailLoading && (
             <div className="flex flex-col items-center justify-center h-full text-center px-8 page-enter">
               <div className="text-5xl mb-4">📊</div>
-              <h2 className="font-display text-3xl font-light mb-2" style={{ color: 'var(--text-dark)' }}>Select a senior</h2>
-              <p className="text-base" style={{ color: '#8aaa92' }}>Choose a senior from the list to view their wellbeing details.</p>
+              <h2 className="font-display text-3xl font-light mb-2" style={{ color: 'var(--text-dark)' }}>Senior auswählen</h2>
+              <p className="text-base" style={{ color: '#8aaa92' }}>Wählen Sie einen Senior aus der Liste, um Details zum Wohlbefinden zu sehen.</p>
             </div>
           )}
 
@@ -245,7 +302,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 {selected.summaries[0] && (
-                  <div className="px-4 py-2 rounded-xl text-sm font-medium capitalize" style={{
+                  <div className="px-4 py-2 rounded-xl text-sm font-medium" style={{
                     background: RISK_CONFIG[selected.summaries[0].risk_level]?.bg,
                     color: RISK_CONFIG[selected.summaries[0].risk_level]?.color,
                   }}>
@@ -256,50 +313,54 @@ export default function DashboardPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 mb-6 p-1 rounded-xl w-fit" style={{ background: 'white', border: '1px solid #e8f0e9' }}>
-                {(['overview', 'observations', 'escalations'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-5 py-2 rounded-lg text-sm font-medium capitalize transition-all ${activeTab === tab ? 'text-white shadow-sm' : ''}`}
-                    style={activeTab === tab ? { background: 'var(--sage-green)' } : { color: '#6b8a70' }}
-                  >
-                    {tab}
-                    {tab === 'escalations' && selected.escalations.filter(e => !e.acknowledged).length > 0 && (
-                      <span className="ml-1.5 w-4 h-4 rounded-full text-xs inline-flex items-center justify-center bg-red-400 text-white">
-                        {selected.escalations.filter(e => !e.acknowledged).length}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {(['overview', 'observations', 'escalations'] as const).map(tab => {
+                  const labels = { overview: 'Übersicht', observations: 'Beobachtungen', escalations: 'Eskalationen' }
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'text-white shadow-sm' : ''}`}
+                      style={activeTab === tab ? { background: 'var(--sage-green)' } : { color: '#6b8a70' }}
+                    >
+                      {labels[tab]}
+                      {tab === 'escalations' && selected.escalations.filter(e => !e.acknowledged).length > 0 && (
+                        <span className="ml-1.5 w-4 h-4 rounded-full text-xs inline-flex items-center justify-center bg-red-400 text-white">
+                          {selected.escalations.filter(e => !e.acknowledged).length}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
 
-              {/* Overview Tab */}
+              {/* Übersicht */}
               {activeTab === 'overview' && (
                 <div className="space-y-4">
                   {selected.summaries.length === 0 && (
                     <div className="glass rounded-2xl p-8 text-center">
-                      <p className="text-base" style={{ color: '#8aaa92' }}>No conversations recorded yet.</p>
+                      <p className="text-base" style={{ color: '#8aaa92' }}>Noch keine Gespräche aufgezeichnet.</p>
                     </div>
                   )}
                   {selected.summaries.map(s => {
                     const rc = RISK_CONFIG[s.risk_level] || RISK_CONFIG.unknown
-                    const flags = [
-                      s.sleep_issue && 'Poor Sleep', s.loneliness && 'Loneliness',
-                      s.pain && 'Pain', s.medication_issue && 'Medication Issue', s.anxiety && 'Anxiety'
-                    ].filter(Boolean)
+                    const flags = SUMMARY_FLAGS.filter(f => (s as any)[f.key])
                     return (
                       <div key={s.id} className="glass rounded-2xl p-6 border border-sage-100 card-hover">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <div className="text-sm font-medium" style={{ color: 'var(--text-dark)' }}>{new Date(s.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-                            <div className="text-xs mt-0.5 capitalize" style={{ color: '#8aaa92' }}>Mood: {s.mood?.replace(/_/g, ' ')}</div>
+                            <div className="text-sm font-medium" style={{ color: 'var(--text-dark)' }}>
+                              {new Date(s.date).toLocaleDateString('de-DE', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </div>
+                            <div className="text-xs mt-0.5" style={{ color: '#8aaa92' }}>
+                              Stimmung: {MOOD_LABELS[s.mood] ?? s.mood}
+                            </div>
                           </div>
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold capitalize" style={{ background: rc.bg, color: rc.color }}>{rc.label}</span>
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: rc.bg, color: rc.color }}>{rc.label}</span>
                         </div>
                         {flags.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-3">
                             {flags.map(f => (
-                              <span key={f as string} className="px-2 py-0.5 rounded-full text-xs" style={{ background: '#fff3e0', color: '#9a6200' }}>⚡ {f}</span>
+                              <span key={f.key} className="px-2 py-0.5 rounded-full text-xs" style={{ background: '#fff3e0', color: '#9a6200' }}>⚡ {f.label}</span>
                             ))}
                           </div>
                         )}
@@ -310,12 +371,12 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Observations Tab */}
+              {/* Beobachtungen */}
               {activeTab === 'observations' && (
                 <div className="space-y-3">
                   {selected.observations.length === 0 && (
                     <div className="glass rounded-2xl p-8 text-center">
-                      <p style={{ color: '#8aaa92' }}>No observations recorded yet.</p>
+                      <p style={{ color: '#8aaa92' }}>Noch keine Beobachtungen aufgezeichnet.</p>
                     </div>
                   )}
                   {selected.observations.map(o => (
@@ -325,8 +386,12 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm capitalize" style={{ color: 'var(--text-dark)' }}>{o.signal_type.replace(/_/g, ' ')}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize risk-${o.severity}`}>{o.severity}</span>
+                          <span className="font-medium text-sm" style={{ color: 'var(--text-dark)' }}>
+                            {SIGNAL_LABELS[o.signal_type] ?? o.signal_type.replace(/_/g, ' ')}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium risk-${o.severity}`}>
+                            {SEVERITY_LABELS[o.severity] ?? o.severity}
+                          </span>
                         </div>
                         {o.description && <p className="text-sm" style={{ color: '#5a7060' }}>{o.description}</p>}
                         <p className="text-xs mt-1" style={{ color: '#aabdab' }}>{timeAgo(o.detected_at)}</p>
@@ -336,26 +401,31 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Escalations Tab */}
+              {/* Eskalationen */}
               {activeTab === 'escalations' && (
                 <div className="space-y-3">
                   {selected.escalations.length === 0 && (
                     <div className="glass rounded-2xl p-8 text-center">
-                      <p style={{ color: '#8aaa92' }}>No escalations recorded.</p>
+                      <p style={{ color: '#8aaa92' }}>Keine Eskalationen aufgezeichnet.</p>
                     </div>
                   )}
                   {selected.escalations.map(e => {
                     const rc = RISK_CONFIG[e.priority] || RISK_CONFIG.low
+                    const priorityLabel = { low: 'Niedrige Priorität', medium: 'Mittlere Priorität', high: 'Hohe Priorität' }[e.priority] ?? e.priority
                     return (
-                      <div key={e.id} className={`rounded-xl p-5 border ${e.acknowledged ? 'opacity-60' : ''}`} style={{ background: e.acknowledged ? 'var(--bg-main)' : rc.bg, borderColor: e.acknowledged ? '#e8f0e9' : rc.color + '44' }}>
+                      <div key={e.id} className={`rounded-xl p-5 border ${e.acknowledged ? 'opacity-60' : ''}`}
+                        style={{ background: e.acknowledged ? 'var(--bg-main)' : rc.bg, borderColor: e.acknowledged ? '#e8f0e9' : rc.color + '44' }}
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize" style={{ background: rc.bg, color: rc.color, border: `1px solid ${rc.color}44` }}>{e.priority} priority</span>
-                              {e.acknowledged && <span className="text-xs" style={{ color: '#8aaa92' }}>✓ Acknowledged</span>}
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: rc.bg, color: rc.color, border: `1px solid ${rc.color}44` }}>
+                                {priorityLabel}
+                              </span>
+                              {e.acknowledged && <span className="text-xs" style={{ color: '#8aaa92' }}>✓ Bestätigt</span>}
                             </div>
                             <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-dark)' }}>{e.reason}</p>
-                            <p className="text-sm" style={{ color: '#5a7060' }}>Action: {e.action_required}</p>
+                            <p className="text-sm" style={{ color: '#5a7060' }}>Maßnahme: {e.action_required}</p>
                             <p className="text-xs mt-2" style={{ color: '#aabdab' }}>{timeAgo(e.created_at)}</p>
                           </div>
                           {!e.acknowledged && (
@@ -364,7 +434,7 @@ export default function DashboardPage() {
                               className="px-3 py-1.5 rounded-lg text-xs font-medium text-white flex-shrink-0"
                               style={{ background: 'var(--sage-green)' }}
                             >
-                              Acknowledge
+                              Bestätigen
                             </button>
                           )}
                         </div>
